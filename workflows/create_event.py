@@ -12,7 +12,7 @@ def create_event_workflow(data: dict):
     event = CalendarEvent(**data)
 
     result = create_event(
-        event.model_dump()
+        event.model_dump(exclude_none=True)
     )
 
     return result

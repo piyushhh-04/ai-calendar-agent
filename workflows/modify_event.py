@@ -1,26 +1,16 @@
-from tools.calendar import events_db
+from tools.calendar import update_event
 
 
 def modify_event_workflow(
-    event_id,
-    field,
-    value
+    event_id=None,
+    title=None,
+    field=None,
+    value=None
 ):
 
-    if event_id >= len(events_db):
-
-        return {
-
-            "status": "error",
-
-            "message": "Event not found"
-        }
-
-    events_db[event_id][field] = value
-
-    return {
-
-        "status": "success",
-
-        "event": events_db[event_id]
-    }
+    return update_event(
+        event_id=event_id,
+        title=title,
+        field=field,
+        value=value
+    )

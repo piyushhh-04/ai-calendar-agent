@@ -3,25 +3,27 @@ from agents.calendar_agent import CalendarAgent
 
 agent = CalendarAgent()
 
+def main():
 
-result = agent.run(
+    print("AI Calendar Agent ready. Type 'exit' to quit.")
 
-    intent="create",
+    while True:
 
-    data={
+        user_input = input("You: ").strip()
 
-        "title": "Dinner with Rahul",
+        if user_input.lower() in {"exit", "quit"}:
 
-        "date": "2026-06-17",
+            break
 
-        "start_time": "20:00",
+        if not user_input:
 
-        "end_time": "22:00",
+            continue
 
-        "attendees": ["Rahul"]
-    }
+        response = agent.run(user_input)
 
-)
+        print(f"Agent: {response}")
 
 
-print(result)
+if __name__ == "__main__":
+
+    main()

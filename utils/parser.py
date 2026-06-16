@@ -1,25 +1,33 @@
-"""
-Parser Utility
+"""Parser helpers for validating structured model output."""
 
-Converts user text into structured data.
+import json
 
-This is a placeholder parser.
-
-In production:
-
-- OpenAI Structured Outputs
-- Function Calling
-- JSON Mode
-
-can be used.
-"""
+from schemas import IntentClassification
 
 
 def parse_user_input(text):
+    """
+    Convert JSON text from the LLM into a validated intent object.
+    """
 
-    return {
+    cleaned = text.strip()
 
-        "intent": "create",
+    if cleaned.startswith("```"):
 
-        "raw_text": text
-    }
+        cleaned = cleaned.strip("`")
+
+        if cleaned.startswith("json"):
+
+            cleaned = cleaned[4:].strip()
+
+    start_index = cleaned.find("{")
+
+    end_index = cleaned.rfind("}")
+
+    if start_index != -1 and end_index != -1:
+
+        cleaned = cleaned[start_index : end_index + 1]
+
+    data = json.loads(cleaned)
+
+    return IntentClassification.model_validate(data)
