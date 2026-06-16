@@ -50,11 +50,6 @@ def create_event(event):
     }
 
 
-def get_events():
-
-    return events_db
-
-
 def update_event(event_id=None, title=None, field=None, value=None):
 
     index = _find_event_index(event_id=event_id, title=title)

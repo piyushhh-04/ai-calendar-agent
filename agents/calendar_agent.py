@@ -1,11 +1,10 @@
 from datetime import datetime
 from pathlib import Path
-import os
+import json
 
 from client import chat
 from memory import Memory
-from router import route_request
-from utils.parser import parse_user_input
+from tools.calendar import create_event, delete_event, update_event
 
 
 class CalendarAgent:
@@ -18,13 +17,7 @@ class CalendarAgent:
 
     def _select_model(self):
 
-        api_key = os.getenv("GEMINI_API_KEY")
-
-        if api_key and api_key.startswith("sk-or-"):
-
-            return os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2-pro:free")
-
-        return "gemini-2.0-flash"
+        return "nex-agi/nex-n2-pro:free"
 
     def _load_system_prompt(self):
 
@@ -42,43 +35,83 @@ class CalendarAgent:
         self.memory.add_user(user_text)
         return self.memory.get_messages()
 
-    def _format_result(self, result, request):
+    def _parse_request(self, llm_response):
 
-        if not isinstance(result, dict):
-            return str(result)
+        cleaned = llm_response.strip()
+
+        if cleaned.startswith("```"):
+
+            cleaned = cleaned.strip("`")
+
+            if cleaned.startswith("json"):
+
+                cleaned = cleaned[4:].strip()
+
+        start_index = cleaned.find("{")
+        end_index = cleaned.rfind("}")
+
+        if start_index != -1 and end_index != -1:
+
+            cleaned = cleaned[start_index : end_index + 1]
+
+        return json.loads(cleaned)
+
+    def _create_response(self, event):
+
+        result = create_event(event)
+        stored_event = result.get("event", {})
+        title = stored_event.get("title", "event")
+        date = stored_event.get("date")
+        start_time = stored_event.get("start_time")
+        end_time = stored_event.get("end_time")
+
+        parts = [f'Created "{title}"']
+
+        if date:
+
+            parts.append(f"on {date}")
+
+        if start_time:
+
+            if end_time:
+
+                parts.append(f"from {start_time} to {end_time}")
+
+            else:
+
+                parts.append(f"at {start_time}")
+
+        return " ".join(parts) + "."
+
+    def _modify_response(self, request):
+
+        result = update_event(
+            event_id=request.get("event_id"),
+            title=request.get("target_event"),
+            field=request.get("field_to_modify"),
+            value=request.get("new_value"),
+        )
 
         if result.get("status") != "success":
-            return result.get("message", "Something went wrong")
 
-        event = result.get("event") or result.get("deleted") or {}
+            return result.get("message", "Could not update that event.")
 
-        if request.intent == "create":
-            title = event.get("title", "event")
-            date = event.get("date")
-            start_time = event.get("start_time")
-            end_time = event.get("end_time")
-            details = [f'Created "{title}"']
+        event = result.get("event", {})
+        return f'Updated "{event.get("title", request.get("target_event", "event"))}" successfully.'
 
-            if date:
-                details.append(f"on {date}")
+    def _delete_response(self, request):
 
-            if start_time:
-                if end_time:
-                    details.append(f"from {start_time} to {end_time}")
-                else:
-                    details.append(f"at {start_time}")
+        result = delete_event(
+            event_id=request.get("event_id"),
+            title=request.get("target_event"),
+        )
 
-            return " ".join(details) + "."
+        if result.get("status") != "success":
 
-        if request.intent == "modify":
-            title = event.get("title", request.target_event or "event")
-            return f'Updated "{title}" successfully.'
+            return result.get("message", "Could not delete that event.")
 
-        if request.intent == "delete":
-            title = event.get("title", request.target_event or "event")
-            return f'Deleted "{title}" successfully.'
-
-        return result.get("message", "Done")
+        deleted = result.get("deleted", {})
+        return f'Deleted "{deleted.get("title", request.get("target_event", "event"))}" successfully.'
 
     def run(self, user_text):
 
@@ -90,14 +123,29 @@ class CalendarAgent:
                 model=self.model,
                 response_format={"type": "json_object"}
             )
-        except Exception as error:
-            assistant_response = str(error)
+            request = self._parse_request(llm_response)
+        except Exception:
+            assistant_response = "I couldn\'t understand that. Try again with a date, time, and a short event name."
             self.memory.add_assistant(assistant_response)
             return assistant_response
 
-        request = parse_user_input(llm_response)
-        result = route_request(request)
-        assistant_response = self._format_result(result, request)
+        intent = request.get("intent")
+
+        if intent == "create":
+
+            assistant_response = self._create_response(request.get("event", {}))
+
+        elif intent == "modify":
+
+            assistant_response = self._modify_response(request)
+
+        elif intent == "delete":
+
+            assistant_response = self._delete_response(request)
+
+        else:
+
+            assistant_response = "I couldn\'t understand that request."
 
         self.memory.add_assistant(assistant_response)
         return assistant_response

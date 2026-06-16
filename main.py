@@ -5,7 +5,7 @@ agent = CalendarAgent()
 
 def main():
 
-    print("AI Calendar Agent ready. Type 'exit' to quit.")
+    print("Calendar ready. Type 'exit' to quit.")
 
     try:
         while True:
