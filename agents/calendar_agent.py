@@ -12,7 +12,7 @@ class CalendarAgent:
     def __init__(self):
 
         self.memory = Memory()
-        self.model = "meta-llama/llama-3.2-3b-instruct:free"
+        self.model = "gemini-2.0-flash"
         self.system_prompt = self._load_system_prompt()
 
     def _load_system_prompt(self):
@@ -73,11 +73,16 @@ class CalendarAgent:
 
         messages = self._build_messages(user_text)
 
-        llm_response = chat(
-            messages=messages,
-            model=self.model,
-            response_format={"type": "json_object"}
-        )
+        try:
+            llm_response = chat(
+                messages=messages,
+                model=self.model,
+                response_format={"type": "json_object"}
+            )
+        except Exception as error:
+            assistant_response = str(error)
+            self.memory.add_assistant(assistant_response)
+            return assistant_response
 
         request = parse_user_input(llm_response)
         result = route_request(request)

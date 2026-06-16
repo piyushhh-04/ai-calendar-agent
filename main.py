@@ -7,21 +7,25 @@ def main():
 
     print("AI Calendar Agent ready. Type 'exit' to quit.")
 
-    while True:
+    try:
+        while True:
 
-        user_input = input("You: ").strip()
+            user_input = input("You: ").strip()
 
-        if user_input.lower() in {"exit", "quit"}:
+            if user_input.lower() in {"exit", "quit"}:
 
-            break
+                break
 
-        if not user_input:
+            if not user_input:
 
-            continue
+                continue
 
-        response = agent.run(user_input)
+            response = agent.run(user_input)
 
-        print(f"Agent: {response}")
+            print(f"Agent: {response}")
+    except (KeyboardInterrupt, EOFError):
+
+        print("\nGoodbye.")
 
 
 if __name__ == "__main__":
