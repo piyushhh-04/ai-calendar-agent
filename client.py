@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 import time
 
+from openai import OpenAI
 import httpx
 
 # Load environment variables
@@ -10,6 +11,24 @@ load_dotenv()
 def _get_gemini_api_key():
 
     return os.getenv("GEMINI_API_KEY")
+
+
+def _is_openrouter_key(api_key):
+
+    return bool(api_key) and api_key.startswith("sk-or-")
+
+
+def _get_openrouter_client(api_key):
+
+    return OpenAI(
+        api_key=api_key,
+        base_url="https://openrouter.ai/api/v1"
+    )
+
+
+def _get_openrouter_model():
+
+    return os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2-pro:free")
 
 
 def _messages_to_gemini_payload(messages):
@@ -126,5 +145,24 @@ def chat(
     """
     Send messages to the model and return text.
     """
+
+    api_key = _get_gemini_api_key()
+
+    if _is_openrouter_key(api_key):
+
+        openrouter_client = _get_openrouter_client(api_key)
+
+        request_kwargs = {
+            "model": _get_openrouter_model(),
+            "messages": messages,
+            "temperature": 0,
+        }
+
+        if response_format is not None:
+
+            request_kwargs["response_format"] = response_format
+
+        response = openrouter_client.chat.completions.create(**request_kwargs)
+        return response.choices[0].message.content
 
     return _chat_gemini(messages, model, response_format=response_format)

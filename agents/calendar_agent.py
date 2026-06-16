@@ -1,5 +1,6 @@
 from datetime import datetime
 from pathlib import Path
+import os
 
 from client import chat
 from memory import Memory
@@ -12,8 +13,18 @@ class CalendarAgent:
     def __init__(self):
 
         self.memory = Memory()
-        self.model = "gemini-2.0-flash"
+        self.model = self._select_model()
         self.system_prompt = self._load_system_prompt()
+
+    def _select_model(self):
+
+        api_key = os.getenv("GEMINI_API_KEY")
+
+        if api_key and api_key.startswith("sk-or-"):
+
+            return os.getenv("OPENROUTER_MODEL", "nex-agi/nex-n2-pro:free")
+
+        return "gemini-2.0-flash"
 
     def _load_system_prompt(self):
 
